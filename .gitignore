@@ -6,3 +6,6 @@
 *.log
 /json
 /pic
+command.sh
+log
+log.lock
