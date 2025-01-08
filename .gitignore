@@ -1,0 +1,8 @@
+/data
+/finallasttrain
+/result
+/runs
+/src/__pycache__
+*.log
+/json
+/pic
