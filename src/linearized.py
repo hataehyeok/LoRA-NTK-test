@@ -559,7 +559,7 @@ class LinearizedLoraTrainer(LinearHeadTrainer):
         writer.flush()
         writer.close()
         self.save_model(self.args.output_dir)
-        return avg_loss.item() , epoch_count
+        return avg_loss, epoch_count
     
     
     def metrics(self):
