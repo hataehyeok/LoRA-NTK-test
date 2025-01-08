@@ -386,7 +386,8 @@ class LinearizedLoraTrainer(LinearHeadTrainer):
             )
         
         epoch_count = 0 
-        epoch_losses = []
+        epoch_train_losses = []
+        epoch_eval_accuracies = []
         
         #Make sure to freeze other parameters
         if self.model.model_args.apply_lora:
@@ -420,6 +421,7 @@ class LinearizedLoraTrainer(LinearHeadTrainer):
             if self.args.eval_during_training:
                 total_loss_eval = 0
                 eval_preds=[]
+                _eval_preds = []
                 eval_targets_list=[]
                 
             for i, inputs_outer in enumerate(tqdm(dataloader_outer, desc="Fine-tuning")):
@@ -478,6 +480,7 @@ class LinearizedLoraTrainer(LinearHeadTrainer):
             avg_loss = (total_loss/ len(dataloader_outer.dataset)) + (reg * self.args.linear_wd) 
             logger.info(f"epoch : {epoch+1} train_loss : {avg_loss}")
             writer.add_scalar(f"train_loss_{self.model.data_args.task_name}/epoch", avg_loss, epoch)
+            epoch_train_losses.append(avg_loss)
             
             # Do evaluation during training if needed.
             if self.args.eval_during_training: 
@@ -505,7 +508,9 @@ class LinearizedLoraTrainer(LinearHeadTrainer):
                         dist.all_reduce(loss_eval, op=dist.ReduceOp.SUM) 
                         total_loss_eval += loss_eval.item()
                         
-                        eval_preds.append( eval_logits + output_eval )
+                        eval_preds.append(eval_logits + output_eval)
+                        predictions = torch.argmax(eval_logits + output_eval, dim=-1)
+                        _eval_preds.append(predictions)
                         eval_targets_list.append(eval_targets)
                         
                         saved_gradients_eval_cpu = []
@@ -517,10 +522,15 @@ class LinearizedLoraTrainer(LinearHeadTrainer):
                        
                 eval_file_exists = True
 
+                total_correct = sum((pred == tgt).sum().item() for pred, tgt in zip(_eval_preds, eval_targets_list))
+                total_samples = sum(tgt.size(0) for tgt in eval_targets_list)
+                accuracy = total_correct / total_samples
                 avg_loss_eval = (total_loss_eval / len(dataloader_outer_eval.dataset) )+ (reg * self.args.linear_wd)
-                logger.info(f"epoch : {epoch+1} eval_loss : {avg_loss_eval}")
+                logger.info(f"epoch : {epoch+1} eval_loss : {avg_loss_eval} eval_accuracy : {accuracy:.4f}")
                 writer.add_scalar(f"eval_loss_{self.model.data_args.task_name}/epoch", avg_loss_eval, epoch)
-                
+                writer.add_scalar(f"eval_accuracy_{self.model.data_args.task_name}/epoch", accuracy, epoch)
+                epoch_eval_accuracies.append(accuracy)
+
                 eval_preds = torch.cat(eval_preds, dim=0)
                 eval_targets = torch.cat(eval_targets_list, dim=0)
 
@@ -557,15 +567,25 @@ class LinearizedLoraTrainer(LinearHeadTrainer):
                 logger.info(f"epoch : {epoch+1}  objective : {objective}")
                 writer.add_scalar(f"Eval_acc_{self.model.data_args.task_name}/epoch", objective, epoch)
 
-            epoch_losses.append(avg_loss)
-
         import json
-        with open("training_losses.json", "w") as f:
-            json.dump(epoch_losses, f)
+
+        epoch_train_losses_serializable = [loss.item() if isinstance(loss, torch.Tensor) else loss for loss in epoch_train_losses]
+        # epoch_eval_accuracies_serializable = [{"epoch": idx + 1, "accuracy": acc} for idx, acc in enumerate(epoch_eval_accuracies)]
+        epoch_eval_accuracies_serializable = [acc for acc in epoch_eval_accuracies]
+        # just epoch_eval_accuracies_serializable = epoch_eval_accuracies
+
+        with open("qnli_1000_2.json", "w") as f:
+            json.dump(epoch_train_losses_serializable, f)
+        with open("eval_qnli_1000_2.json", "w") as f:
+            json.dump(epoch_eval_accuracies_serializable, f)
 
         writer.flush()
         writer.close()
         self.save_model(self.args.output_dir)
+        
+        if self.args.eval_during_training:
+            return avg_loss.item(), epoch_count
+        
         return avg_loss, epoch_count
     
     
