@@ -386,6 +386,7 @@ class LinearizedLoraTrainer(LinearHeadTrainer):
             )
         
         epoch_count = 0 
+        epoch_losses = []
         
         #Make sure to freeze other parameters
         if self.model.model_args.apply_lora:
@@ -555,7 +556,13 @@ class LinearizedLoraTrainer(LinearHeadTrainer):
                 objective = default_dev_objective(metrics)
                 logger.info(f"epoch : {epoch+1}  objective : {objective}")
                 writer.add_scalar(f"Eval_acc_{self.model.data_args.task_name}/epoch", objective, epoch)
-                         
+
+            epoch_losses.append(avg_loss)
+
+        import json
+        with open("training_losses.json", "w") as f:
+            json.dump(epoch_losses, f)
+
         writer.flush()
         writer.close()
         self.save_model(self.args.output_dir)
