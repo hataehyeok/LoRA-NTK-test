@@ -2,13 +2,7 @@ import json
 import matplotlib.pyplot as plt
 import argparse
 
-def draw_single_plot():
-    parser = argparse.ArgumentParser(description="Plot training and evaluation curves based on user-specified rank.")
-    parser.add_argument("--rank", type=int, required=True, help="Rank of the files to plot (e.g., 4, 15).")
-    args = parser.parse_args()
-
-    rank = args.rank
-
+def draw_single_plot(rank):
     eval_file = f"json/eval_qnli_1000_{rank}.json"
     train_file = f"json/qnli_1000_{rank}.json"
 
@@ -40,8 +34,8 @@ def draw_single_plot():
     plt.show()
 
 def draw_multi_plot():
-    ranks = [2, 4, 8, 16]
-    colors = ['blue', 'green', 'orange', 'red']
+    ranks = [2, 4, 8, 16, 32, 64, 128]
+    colors = ['blue', 'green', 'orange', 'red', 'purple', 'brown', 'pink']
 
     plt.figure(figsize=(10, 6))
 
@@ -93,6 +87,18 @@ def draw_multi_plot():
     plt.savefig("evaluate_accuracy_all_ranks.png")
     plt.show()
 
+def parser():
+    parser = argparse.ArgumentParser(description="Plot training and evaluation curves based on user-specified rank.")
+    parser.add_argument("--mode", type=str, required=True, help="Mode to run the script (s for single plot, m for multi plot).")
+    parser.add_argument("--rank", type=int, required=True, help="Rank of the files to plot (e.g., 4, 15).")
+    args = parser.parse_args()
+
+    if args.mode == "s":
+        draw_single_plot(args.rank)
+    elif args.mode == "m":
+        draw_multi_plot()
+    else:
+        print("Invalid mode. Please specify 's' for single plot or 'm' for multi plot.")
+
 if __name__ == "__main__":
-    # draw_single_plot()
-    draw_multi_plot()
+    parser()
