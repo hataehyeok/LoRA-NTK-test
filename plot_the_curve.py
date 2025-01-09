@@ -1,10 +1,19 @@
+import os
 import json
 import matplotlib.pyplot as plt
 import argparse
 
 def draw_single_plot(rank):
-    eval_file = f"json/eval_qnli_1000_{rank}.json"
-    train_file = f"json/qnli_1000_{rank}.json"
+    eval_file = f"json_test/qnli/accu_{rank}.json"
+    train_file = f"json_test/qnli/loss_{rank}.json"
+    eval_dir = os.path.dirname(eval_file)
+    train_dir = os.path.dirname(train_file)
+    pic_dir = f"pic_test/qnli"
+
+    for directory in [eval_dir, train_dir, pic_dir]:
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+            print(f"Directory created: {directory}")
 
     try:
         with open(eval_file, "r") as f:
@@ -21,7 +30,9 @@ def draw_single_plot(rank):
     plt.ylabel("Accuracy")
     plt.title(f"Test Curve (Rank {rank})")
     plt.legend()
-    plt.savefig(f"pic/eval_qnli_1000_{rank}.png")
+    accu_output_path = os.path.join(pic_dir, f"accu_{rank}.png")
+    plt.savefig(accu_output_path)
+    print(f"Saved Test Accuracy plot: {accu_output_path}")
     plt.show()
 
     plt.figure()
@@ -30,12 +41,18 @@ def draw_single_plot(rank):
     plt.ylabel("Loss")
     plt.title(f"Training Curve (Rank {rank})")
     plt.legend()
-    plt.savefig(f"pic/qnli_1000_{rank}.png")
+    loss_output_path = os.path.join(pic_dir, f"loss_{rank}.png")
+    plt.savefig(loss_output_path)
+    print(f"Saved Training Loss plot: {loss_output_path}")
     plt.show()
 
+
 def draw_multi_plot():
-    ranks = [2, 4, 8, 16, 32, 64, 128]
-    colors = ['blue', 'green', 'orange', 'red', 'purple', 'brown', 'pink']
+    # ranks = [0, 4, 16, 64, 512]
+    # colors = ["red", "blue", "green", "orange", "purple"]
+
+    ranks = [2, 16]
+    colors = ["red", "blue"]
 
     plt.figure(figsize=(10, 6))
 
