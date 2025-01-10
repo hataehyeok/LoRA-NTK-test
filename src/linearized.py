@@ -52,7 +52,7 @@ from src.linearhead_trainer import varsize_tensor_all_gather, LinearHeadTrainer
 
 import numpy as np
 from tqdm import tqdm
-
+import csv
 
 logger = logging.get_logger(__name__)
 
@@ -389,6 +389,27 @@ class LinearizedLoraTrainer(LinearHeadTrainer):
         epoch_train_losses = []
         epoch_eval_accuracies = []
         
+        # Save loss to csv file
+        loss_csv = f"test/csv/{self.model.data_args.task_name}/loss_{self.model.model_args.lora_r}.csv"
+        accu_csv = f"test/csv/{self.model.data_args.task_name}/accu_{self.model.model_args.lora_r}.csv"
+        loss_csv_dir = os.path.dirname(loss_csv)
+        accu_csv_dir = os.path.dirname(accu_csv)
+
+        if not os.path.exists(loss_csv_dir):
+            os.makedirs(loss_csv_dir)
+            print(f"Directory created: {loss_csv_dir}")
+        if not os.path.exists(accu_csv_dir):
+            os.makedirs(accu_csv_dir)
+            print(f"Directory created: {accu_csv_dir}")
+
+        loss_file = open(loss_csv, mode='w', newline='')
+        loss_writer = csv.writer(loss_file)
+        loss_writer.writerow(["epoch", "loss"])
+        
+        accu_file = open(accu_csv, mode='w', newline='')
+        accu_writer = csv.writer(accu_file)
+        accu_writer.writerow(["epoch", "accuracy"])
+                
         #Make sure to freeze other parameters
         if self.model.model_args.apply_lora:
             for name, param in self.lora_model.named_parameters():
@@ -481,6 +502,7 @@ class LinearizedLoraTrainer(LinearHeadTrainer):
             logger.info(f"epoch : {epoch+1} train_loss : {avg_loss}")
             writer.add_scalar(f"train_loss_{self.model.data_args.task_name}/epoch", avg_loss, epoch)
             epoch_train_losses.append(avg_loss)
+            loss_writer.writerow([epoch+1, avg_loss.item()])
             
             # Do evaluation during training if needed.
             if self.args.eval_during_training: 
@@ -525,10 +547,11 @@ class LinearizedLoraTrainer(LinearHeadTrainer):
                 total_samples = sum(tgt.size(0) for tgt in eval_targets_list)
                 accuracy = total_correct / total_samples
                 avg_loss_eval = (total_loss_eval / len(dataloader_outer_eval.dataset) )+ (reg * self.args.linear_wd)
-                logger.info(f"epoch : {epoch+1} eval_loss : {avg_loss_eval} eval_accuracy : {accuracy:.4f}")
+                logger.info(f"epoch : {epoch+1} eval_loss : {avg_loss_eval} eval_accuracy : {accuracy}")
                 writer.add_scalar(f"eval_loss_{self.model.data_args.task_name}/epoch", avg_loss_eval, epoch)
                 writer.add_scalar(f"eval_accuracy_{self.model.data_args.task_name}/epoch", accuracy, epoch)
                 epoch_eval_accuracies.append(accuracy)
+                accu_writer.writerow([epoch+1, accuracy])
 
                 eval_preds = torch.cat(eval_preds, dim=0)
                 eval_targets = torch.cat(eval_targets_list, dim=0)
@@ -566,23 +589,8 @@ class LinearizedLoraTrainer(LinearHeadTrainer):
                 logger.info(f"epoch : {epoch+1}  objective : {objective}")
                 writer.add_scalar(f"Eval_acc_{self.model.data_args.task_name}/epoch", objective, epoch)
 
-        import json
-
-        epoch_train_losses_serializable = [loss.item() if isinstance(loss, torch.Tensor) else loss for loss in epoch_train_losses]
-        # epoch_eval_accuracies_serializable = [{"epoch": idx + 1, "accuracy": acc} for idx, acc in enumerate(epoch_eval_accuracies)]
-        epoch_eval_accuracies_serializable = [acc for acc in epoch_eval_accuracies]
-        # just epoch_eval_accuracies_serializable = epoch_eval_accuracies
-
-        if self.model.model_args.apply_lora == True:
-            with open(f"json_test/qnli/loss_{self.model.model_args.lora_r}.json", "w") as f:
-                json.dump(epoch_train_losses_serializable, f)
-            with open(f"json_test/qnli/accu_{self.model.model_args.lora_r}.json", "w") as f:
-                json.dump(epoch_eval_accuracies_serializable, f)
-        else:
-            with open(f"json_test/qnli/loss_full.json", "w") as f:
-                json.dump(epoch_train_losses_serializable, f)
-            with open(f"json_test/qnli/accu_full.json", "w") as f:
-                json.dump(epoch_eval_accuracies_serializable, f)
+        loss_file.close()
+        accu_file.close()
 
         writer.flush()
         writer.close()
