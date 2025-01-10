@@ -3,9 +3,15 @@ import json
 import matplotlib.pyplot as plt
 import argparse
 
-def draw_single_plot(rank):
-    eval_file = f"json_test/qnli/accu_{rank}.json"
-    train_file = f"json_test/qnli/loss_{rank}.json"
+def draw_single_plot(mode, rank):
+    
+    if rank != 0:
+        eval_file = f"test/json_test/qnli/accu_{rank}.json"
+        train_file = f"json_test/qnli/loss_{rank}.json"
+    else:
+        eval_file = f"json_test/qnli/accu_full.json"
+        train_file = f"json_test/qnli/loss_full.json"
+    
     eval_dir = os.path.dirname(eval_file)
     train_dir = os.path.dirname(train_file)
     pic_dir = f"pic_test/qnli"
@@ -24,6 +30,7 @@ def draw_single_plot(rank):
         print(f"Error: {e}")
         exit(1)
 
+    
     plt.figure()
     plt.plot(range(1, len(epoch_accu) + 1), epoch_accu, label="Test Accuracy")
     plt.xlabel("Epochs")
@@ -47,13 +54,35 @@ def draw_single_plot(rank):
     plt.show()
 
 
+    plt.figure()
+    plt.plot(range(1, len(epoch_accu) + 1), epoch_accu, label="Test Accuracy")
+    plt.xlabel("Epochs")
+    plt.ylabel("Accuracy")
+    plt.title(f"Test Curve (Full finetuning)")
+    plt.legend()
+    accu_output_path = os.path.join(pic_dir, f"accu_full.png")
+    plt.savefig(accu_output_path)
+    print(f"Saved Test Accuracy plot: {accu_output_path}")
+    plt.show()
+
+    plt.figure()
+    plt.plot(range(1, len(epoch_loss) + 1), epoch_loss, label="Training Loss")
+    plt.xlabel("Epochs")
+    plt.ylabel("Loss")
+    plt.title(f"Training Curve (Full finetuning)")
+    plt.legend()
+    loss_output_path = os.path.join(pic_dir, f"loss_full.png")
+    plt.savefig(loss_output_path)
+    print(f"Saved Training Loss plot: {loss_output_path}")
+    plt.show()
+
 def draw_multi_plot():
     # ranks = [0, 4, 16, 64, 512]
     # colors = ["red", "blue", "green", "orange", "purple"]
 
     ranks = [2, 16]
     colors = ["red", "blue"]
-
+    
     plt.figure(figsize=(10, 6))
 
     for rank, color in zip(ranks, colors):
@@ -111,7 +140,7 @@ def parser():
     args = parser.parse_args()
 
     if args.mode == "s":
-        draw_single_plot(args.rank)
+        draw_single_plot(args.mode, args.rank)
     elif args.mode == "m":
         draw_multi_plot()
     else:
