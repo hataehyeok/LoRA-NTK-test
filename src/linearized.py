@@ -499,7 +499,6 @@ class LinearizedLoraTrainer(LinearHeadTrainer):
                             for j in range(len(self.target_layers)):  
                                 gradient_eval[j].requires_grad_(False)
                         
-                        
                         output_eval = model(inputs_outer.get("input_ids"), inputs_outer.get("attention_mask"), inputs_outer.get("mask_pos"), gradient_eval)
                         eval_logits, eval_targets = self.compute_model_logits(inputs_outer)
                         eval_logits = eval_logits.to(self.args.device)
@@ -574,10 +573,16 @@ class LinearizedLoraTrainer(LinearHeadTrainer):
         epoch_eval_accuracies_serializable = [acc for acc in epoch_eval_accuracies]
         # just epoch_eval_accuracies_serializable = epoch_eval_accuracies
 
-        with open("qnli_1000_2.json", "w") as f:
-            json.dump(epoch_train_losses_serializable, f)
-        with open("eval_qnli_1000_2.json", "w") as f:
-            json.dump(epoch_eval_accuracies_serializable, f)
+        if self.model.model_args.apply_lora == True:
+            with open(f"json_test/qnli/loss_{self.model.model_args.lora_r}.json", "w") as f:
+                json.dump(epoch_train_losses_serializable, f)
+            with open(f"json_test/qnli/accu_{self.model.model_args.lora_r}.json", "w") as f:
+                json.dump(epoch_eval_accuracies_serializable, f)
+        else:
+            with open(f"json_test/qnli/loss_full.json", "w") as f:
+                json.dump(epoch_train_losses_serializable, f)
+            with open(f"json_test/qnli/accu_full.json", "w") as f:
+                json.dump(epoch_eval_accuracies_serializable, f)
 
         writer.flush()
         writer.close()
