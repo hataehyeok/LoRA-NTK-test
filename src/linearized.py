@@ -402,13 +402,13 @@ class LinearizedLoraTrainer(LinearHeadTrainer):
             os.makedirs(accu_csv_dir)
             print(f"Directory created: {accu_csv_dir}")
 
-        loss_file = open(loss_csv, mode='w', newline='')
-        loss_writer = csv.writer(loss_file)
-        loss_writer.writerow(["epoch", "loss"])
-        
-        accu_file = open(accu_csv, mode='w', newline='')
-        accu_writer = csv.writer(accu_file)
-        accu_writer.writerow(["epoch", "accuracy"])
+        with open(loss_csv, mode='w', newline='') as loss_file:
+            loss_writer = csv.writer(loss_file)
+            loss_writer.writerow(["epoch", "loss"])
+
+        with open(accu_csv, mode='w', newline='') as accu_file:
+            accu_writer = csv.writer(accu_file)
+            accu_writer.writerow(["epoch", "accuracy"])
                 
         #Make sure to freeze other parameters
         if self.model.model_args.apply_lora:
@@ -502,7 +502,9 @@ class LinearizedLoraTrainer(LinearHeadTrainer):
             logger.info(f"epoch : {epoch+1} train_loss : {avg_loss}")
             writer.add_scalar(f"train_loss_{self.model.data_args.task_name}/epoch", avg_loss, epoch)
             epoch_train_losses.append(avg_loss)
-            loss_writer.writerow([epoch+1, avg_loss.item()])
+            with open(loss_csv, mode='a', newline='') as loss_file:
+                loss_writer = csv.writer(loss_file)
+                loss_writer.writerow([epoch + 1, avg_loss.item()])
             
             # Do evaluation during training if needed.
             if self.args.eval_during_training: 
@@ -551,7 +553,9 @@ class LinearizedLoraTrainer(LinearHeadTrainer):
                 writer.add_scalar(f"eval_loss_{self.model.data_args.task_name}/epoch", avg_loss_eval, epoch)
                 writer.add_scalar(f"eval_accuracy_{self.model.data_args.task_name}/epoch", accuracy, epoch)
                 epoch_eval_accuracies.append(accuracy)
-                accu_writer.writerow([epoch+1, accuracy])
+                with open(accu_csv, mode='a', newline='') as accu_file:
+                    accu_writer = csv.writer(accu_file)
+                    accu_writer.writerow([epoch + 1, accuracy])
 
                 eval_preds = torch.cat(eval_preds, dim=0)
                 eval_targets = torch.cat(eval_targets_list, dim=0)
@@ -588,9 +592,6 @@ class LinearizedLoraTrainer(LinearHeadTrainer):
                 objective = default_dev_objective(metrics)
                 logger.info(f"epoch : {epoch+1}  objective : {objective}")
                 writer.add_scalar(f"Eval_acc_{self.model.data_args.task_name}/epoch", objective, epoch)
-
-        loss_file.close()
-        accu_file.close()
 
         writer.flush()
         writer.close()
