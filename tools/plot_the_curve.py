@@ -10,7 +10,7 @@ def draw_single_plot(mode, rank):
     else:
         eval_file = f"test/csv/qnli/accu_full.csv"
         train_file = f"test/csv/qnli/loss_full.csv"
-
+    
     eval_dir = os.path.dirname(eval_file)
     train_dir = os.path.dirname(train_file)
     pic_dir = f"test/pic_test/qnli"
@@ -22,14 +22,14 @@ def draw_single_plot(mode, rank):
 
     try:
         df_accu = pd.read_csv(eval_file)
-        df_accu.columns = df_accu.columns.str.strip()  # Remove any spaces
-        print("Evaluation CSV columns after stripping:", df_accu.columns)  # Debugging
-        epoch_accu = df_accu["accuracy"].tolist()  # Access the 'accuracy' column
+        df_accu.columns = df_accu.columns.str.strip()
+        print("Evaluation CSV columns after stripping:", df_accu.columns)
+        epoch_accu = df_accu["accuracy"].tolist()
         
         df_loss = pd.read_csv(train_file)
-        df_loss.columns = df_loss.columns.str.strip()  # Remove any spaces
-        print("Training CSV columns after stripping:", df_loss.columns)  # Debugging
-        epoch_loss = df_loss["loss"].tolist()  # Access the 'loss' column
+        df_loss.columns = df_loss.columns.str.strip()
+        print("Training CSV columns after stripping:", df_loss.columns)
+        epoch_loss = df_loss["loss"].tolist()
     except FileNotFoundError as e:
         print(f"Error: {e}")
         exit(1)
@@ -37,7 +37,6 @@ def draw_single_plot(mode, rank):
         print(f"Error: Missing column in CSV file: {e}")
         exit(1)
 
-    # Plot Test Accuracy
     plt.figure()
     plt.plot(range(1, len(epoch_accu) + 1), epoch_accu, label="Test Accuracy")
     plt.xlabel("Epochs")
@@ -49,7 +48,6 @@ def draw_single_plot(mode, rank):
     print(f"Saved Test Accuracy plot: {accu_output_path}")
     plt.show()
 
-    # Plot Training Loss
     plt.figure()
     plt.plot(range(1, len(epoch_loss) + 1), epoch_loss, label="Training Loss")
     plt.xlabel("Epochs")
