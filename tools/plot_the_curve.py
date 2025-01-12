@@ -1,20 +1,19 @@
 import os
-import json
+import pandas as pd
 import matplotlib.pyplot as plt
 import argparse
 
 def draw_single_plot(mode, rank):
-    
     if rank != 0:
-        eval_file = f"test/json_test/qnli/accu_{rank}.json"
-        train_file = f"json_test/qnli/loss_{rank}.json"
+        eval_file = f"test/csv/qnli/accu_{rank}.csv"
+        train_file = f"test/csv/qnli/loss_{rank}.csv"
     else:
-        eval_file = f"json_test/qnli/accu_full.json"
-        train_file = f"json_test/qnli/loss_full.json"
-    
+        eval_file = f"test/csv/qnli/accu_full.csv"
+        train_file = f"test/csv/qnli/loss_full.csv"
+
     eval_dir = os.path.dirname(eval_file)
     train_dir = os.path.dirname(train_file)
-    pic_dir = f"pic_test/qnli"
+    pic_dir = f"test/pic_test/qnli"
 
     for directory in [eval_dir, train_dir, pic_dir]:
         if not os.path.exists(directory):
@@ -22,15 +21,23 @@ def draw_single_plot(mode, rank):
             print(f"Directory created: {directory}")
 
     try:
-        with open(eval_file, "r") as f:
-            epoch_accu = json.load(f)
-        with open(train_file, "r") as f:
-            epoch_loss = json.load(f)
+        df_accu = pd.read_csv(eval_file)
+        df_accu.columns = df_accu.columns.str.strip()  # Remove any spaces
+        print("Evaluation CSV columns after stripping:", df_accu.columns)  # Debugging
+        epoch_accu = df_accu["accuracy"].tolist()  # Access the 'accuracy' column
+        
+        df_loss = pd.read_csv(train_file)
+        df_loss.columns = df_loss.columns.str.strip()  # Remove any spaces
+        print("Training CSV columns after stripping:", df_loss.columns)  # Debugging
+        epoch_loss = df_loss["loss"].tolist()  # Access the 'loss' column
     except FileNotFoundError as e:
         print(f"Error: {e}")
         exit(1)
+    except KeyError as e:
+        print(f"Error: Missing column in CSV file: {e}")
+        exit(1)
 
-    
+    # Plot Test Accuracy
     plt.figure()
     plt.plot(range(1, len(epoch_accu) + 1), epoch_accu, label="Test Accuracy")
     plt.xlabel("Epochs")
@@ -42,6 +49,7 @@ def draw_single_plot(mode, rank):
     print(f"Saved Test Accuracy plot: {accu_output_path}")
     plt.show()
 
+    # Plot Training Loss
     plt.figure()
     plt.plot(range(1, len(epoch_loss) + 1), epoch_loss, label="Training Loss")
     plt.xlabel("Epochs")
@@ -53,43 +61,16 @@ def draw_single_plot(mode, rank):
     print(f"Saved Training Loss plot: {loss_output_path}")
     plt.show()
 
-
-    plt.figure()
-    plt.plot(range(1, len(epoch_accu) + 1), epoch_accu, label="Test Accuracy")
-    plt.xlabel("Epochs")
-    plt.ylabel("Accuracy")
-    plt.title(f"Test Curve (Full finetuning)")
-    plt.legend()
-    accu_output_path = os.path.join(pic_dir, f"accu_full.png")
-    plt.savefig(accu_output_path)
-    print(f"Saved Test Accuracy plot: {accu_output_path}")
-    plt.show()
-
-    plt.figure()
-    plt.plot(range(1, len(epoch_loss) + 1), epoch_loss, label="Training Loss")
-    plt.xlabel("Epochs")
-    plt.ylabel("Loss")
-    plt.title(f"Training Curve (Full finetuning)")
-    plt.legend()
-    loss_output_path = os.path.join(pic_dir, f"loss_full.png")
-    plt.savefig(loss_output_path)
-    print(f"Saved Training Loss plot: {loss_output_path}")
-    plt.show()
-
 def draw_multi_plot():
-    # ranks = [0, 4, 16, 64, 512]
-    # colors = ["red", "blue", "green", "orange", "purple"]
-
-    ranks = [2, 16]
+    ranks = [4, 16]
     colors = ["red", "blue"]
-    
+
     plt.figure(figsize=(10, 6))
 
     for rank, color in zip(ranks, colors):
-        train_file = f"json/qnli_1000_{rank}.json"
+        train_file = f"test/csv/qnli/loss_{rank}.csv"
         try:
-            with open(train_file, "r") as f:
-                epoch_loss = json.load(f)
+            epoch_loss = pd.read_csv(train_file, header=None).squeeze().tolist()
             plt.plot(
                 range(1, len(epoch_loss) + 1),
                 epoch_loss,
@@ -111,10 +92,9 @@ def draw_multi_plot():
     plt.figure(figsize=(10, 6))
 
     for rank, color in zip(ranks, colors):
-        eval_file = f"json/eval_qnli_1000_{rank}.json"
+        eval_file = f"test/csv/qnli/accu_{rank}.csv"
         try:
-            with open(eval_file, "r") as f:
-                epoch_accuracy = json.load(f)
+            epoch_accuracy = pd.read_csv(eval_file, header=None).squeeze().tolist()
             plt.plot(
                 range(1, len(epoch_accuracy) + 1),
                 epoch_accuracy,
@@ -136,7 +116,7 @@ def draw_multi_plot():
 def parser():
     parser = argparse.ArgumentParser(description="Plot training and evaluation curves based on user-specified rank.")
     parser.add_argument("--mode", type=str, required=True, help="Mode to run the script (s for single plot, m for multi plot).")
-    parser.add_argument("--rank", type=int, required=True, help="Rank of the files to plot (e.g., 4, 15).")
+    parser.add_argument("--rank", type=int, required=True, help="Rank of the files to plot (e.g., 4, 16).")
     args = parser.parse_args()
 
     if args.mode == "s":
