@@ -390,10 +390,17 @@ class LinearizedLoraTrainer(LinearHeadTrainer):
         epoch_eval_accuracies = []
         
         # Save loss to csv file
-        loss_csv = f"test/csv/{self.model.data_args.task_name}/loss_{self.model.model_args.lora_r}.csv"
-        accu_csv = f"test/csv/{self.model.data_args.task_name}/accu_{self.model.model_args.lora_r}.csv"
-        loss_csv_dir = os.path.dirname(loss_csv)
-        accu_csv_dir = os.path.dirname(accu_csv)
+        if self.model.model_args.apply_lora:
+            loss_csv = f"test/csv/{self.model.data_args.task_name}/loss_{self.model.model_args.lora_r}.csv"
+            accu_csv = f"test/csv/{self.model.data_args.task_name}/accu_{self.model.model_args.lora_r}.csv"
+            loss_csv_dir = os.path.dirname(loss_csv)
+            accu_csv_dir = os.path.dirname(accu_csv)
+        else:
+            loss_csv = f"test/csv/{self.model.data_args.task_name}/loss_full.csv"
+            accu_csv = f"test/csv/{self.model.data_args.task_name}/accu_full.csv"
+            loss_csv_dir = os.path.dirname(loss_csv)
+            accu_csv_dir = os.path.dirname(accu_csv)
+    
 
         if not os.path.exists(loss_csv_dir):
             os.makedirs(loss_csv_dir)
