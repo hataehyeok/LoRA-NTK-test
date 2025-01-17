@@ -10,3 +10,5 @@ command.sh
 log
 log.lock
 test
+nohup.out
+exp_results
