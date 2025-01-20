@@ -13,3 +13,4 @@ log.lock
 test
 nohup.out
 exp_results
+dump
