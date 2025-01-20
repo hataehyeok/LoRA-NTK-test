@@ -72,7 +72,7 @@ if available_dirs:
 
         if files_in_dir:
             selected_files = st.multiselect("Select Files to Plot:", files_in_dir)
-            max_epochs = st.slider("Maximum Epochs to Display:", 100, 1000, 500)
+            max_epochs = st.number_input("Maximum Epochs to Display:", min_value=1, max_value=1000, value=500)
 
             if st.button("Generate Selected Plots"):
                 draw_selected_plots(selected_dir, selected_files, max_epochs)
