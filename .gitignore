@@ -3,6 +3,7 @@
 /result
 /runs
 /src/__pycache__
+/tools/__pycache__
 *.log
 /json
 /pic
