@@ -49,6 +49,7 @@ import gc
 from transformers.trainer_utils import TrainOutput
 
 from src.linearhead_trainer import varsize_tensor_all_gather, LinearHeadTrainer
+from tools.helper import make_csv_paths
 
 import numpy as np
 from tqdm import tqdm
@@ -84,7 +85,6 @@ class LinearLoraupdate(nn.Module):
         for i, param in enumerate(self.Lora_a):
            torch.nn.init.normal_(param, mean = 0, std= 1/((np.sqrt(model.model_args.lora_r)*self.target_size[i][1])))  # scaling the initailization by \frac{1}{sqrt{r}}
            #torch.nn.init.kaiming_normal_(param)
-      
         self.Lora_A_list = nn.ParameterList([nn.Parameter(param) for param in self.Lora_a])
         self.Lora_B_list = nn.ParameterList([nn.Parameter(param) for param in self.Lora_b])     
             
@@ -272,7 +272,7 @@ class LinearizedLoraTrainer(LinearHeadTrainer):
                 pass
 
     ## Method to compute gradient 1
-    def compute_gradient_perlayer(self, inputs_outer, layer_name ):
+    def compute_gradient_perlayer(self, inputs_outer, layer_name):
             
         def convert_to_buffer(name):
             if layer_name in name:
@@ -286,7 +286,7 @@ class LinearizedLoraTrainer(LinearHeadTrainer):
 
         model_tmp.eval()
   
-        for name , param in model_tmp.named_parameters():
+        for name, param in model_tmp.named_parameters():
             param.requires_grad_(True)
 
         model_fn, params, buffers = make_functional_with_buffers(model_tmp)
@@ -367,6 +367,7 @@ class LinearizedLoraTrainer(LinearHeadTrainer):
         dataloader_outer_eval = self.get_unshuffled_dataloader(eval_dataset, sharded=True, batch_size=self.args.per_device_eval_batch_size)
         optimizer = optim.SGD(self.lora_model.parameters(), lr=self.args.linear_lr) # Weight decay will be implented manually
 
+        # In this setting apex is unavailable
         if self.args.fp16 and _use_apex:
             if not transformers.is_apex_available():
                 raise ImportError("Please install apex from https://www.github.com/nvidia/apex to use fp16 training.")
@@ -385,38 +386,17 @@ class LinearizedLoraTrainer(LinearHeadTrainer):
                 find_unused_parameters=True,
             )
         
-        epoch_count = 0 
+        epoch_count = 0
         epoch_train_losses = []
         epoch_eval_accuracies = []
         
-        # Save loss to csv file
-        if self.model.model_args.apply_lora:
-            loss_csv = f"test/csv/{self.model.data_args.task_name}/loss_{self.model.model_args.lora_r}.csv"
-            accu_csv = f"test/csv/{self.model.data_args.task_name}/accu_{self.model.model_args.lora_r}.csv"
-            loss_csv_dir = os.path.dirname(loss_csv)
-            accu_csv_dir = os.path.dirname(accu_csv)
-        else:
-            loss_csv = f"test/csv/{self.model.data_args.task_name}/loss_full.csv"
-            accu_csv = f"test/csv/{self.model.data_args.task_name}/accu_full.csv"
-            loss_csv_dir = os.path.dirname(loss_csv)
-            accu_csv_dir = os.path.dirname(accu_csv)
-    
-
-        if not os.path.exists(loss_csv_dir):
-            os.makedirs(loss_csv_dir)
-            print(f"Directory created: {loss_csv_dir}")
-        if not os.path.exists(accu_csv_dir):
-            os.makedirs(accu_csv_dir)
-            print(f"Directory created: {accu_csv_dir}")
-
-        with open(loss_csv, mode='w', newline='') as loss_file:
-            loss_writer = csv.writer(loss_file)
-            loss_writer.writerow(["epoch", "loss"])
-
-        with open(accu_csv, mode='w', newline='') as accu_file:
-            accu_writer = csv.writer(accu_file)
-            accu_writer.writerow(["epoch", "accuracy"])
-                
+        loss_csv, accu_csv = make_csv_paths(
+            self.model.model_args.apply_lora,
+            self.model.data_args.task_name,
+            self.model.model_args.lora_r,
+            self.args.linear_wd
+            )
+        
         #Make sure to freeze other parameters
         if self.model.model_args.apply_lora:
             for name, param in self.lora_model.named_parameters():
