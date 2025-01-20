@@ -12,8 +12,17 @@ def get_existing_directories(base_dir):
         st.error(f"Directory {base_dir} not found.")
         return []
 
-def draw_multi_plot(selected_dir, ranks, max_epochs):
-    st.subheader(f"Training Loss and Accuracy Curves for Directory: {selected_dir}")
+def get_files_in_directory(selected_dir, file_extension=".csv"):
+    """Get a list of files with the specified extension in the selected directory."""
+    try:
+        files = [f for f in os.listdir(selected_dir) if f.endswith(file_extension)]
+        return files
+    except FileNotFoundError:
+        st.error(f"Directory {selected_dir} not found.")
+        return []
+
+def draw_selected_plots(selected_dir, selected_files, max_epochs):
+    st.subheader(f"Selected Plots from Directory: {selected_dir}")
 
     base_dir = os.path.join("exp_results", "csv", selected_dir)
     if not os.path.exists(base_dir):
@@ -21,53 +30,53 @@ def draw_multi_plot(selected_dir, ranks, max_epochs):
         return
 
     colors = ["red", "blue", "green", "orange", "purple", "brown", "pink", "gray"]
-    fig_loss, ax_loss = plt.subplots(figsize=(10, 6))
-    fig_accu, ax_accu = plt.subplots(figsize=(10, 6))
+    fig, ax = plt.subplots(figsize=(10, 6))
 
-    for rank, color in zip(ranks, colors):
-        train_file = os.path.join(base_dir, f"loss_{rank}.csv")
-        eval_file = os.path.join(base_dir, f"accu_{rank}.csv")
-
+    for file, color in zip(selected_files, colors):
         try:
-            df_loss = pd.read_csv(train_file)
-            df_loss.columns = df_loss.columns.str.strip()
-            epoch_loss = df_loss["loss"].tolist()[:max_epochs]
-            ax_loss.plot(range(1, len(epoch_loss) + 1), epoch_loss, label=f"Rank {rank}", color=color, linestyle='--')
+            file_path = os.path.join(base_dir, file)
+            df = pd.read_csv(file_path)
+            df.columns = df.columns.str.strip()
 
-            df_accu = pd.read_csv(eval_file)
-            df_accu.columns = df_accu.columns.str.strip()
-            epoch_accu = df_accu["accuracy"].tolist()[:max_epochs]
-            ax_accu.plot(range(1, len(epoch_accu) + 1), epoch_accu, label=f"Rank {rank}", color=color, linestyle='--')
+            # Plot loss or accuracy based on the file type
+            if "loss" in file.lower():
+                epoch_data = df["loss"].tolist()[:max_epochs]
+                ax.plot(range(1, len(epoch_data) + 1), epoch_data, label=file, color=color, linestyle='--')
+            elif "accu" in file.lower() or "accuracy" in file.lower():
+                epoch_data = df["accuracy"].tolist()[:max_epochs]
+                ax.plot(range(1, len(epoch_data) + 1), epoch_data, label=file, color=color, linestyle='-')
 
         except FileNotFoundError:
-            st.warning(f"File for Rank {rank} not found in {selected_dir}. Skipping...")
+            st.warning(f"File {file} not found in {selected_dir}. Skipping...")
         except KeyError:
-            st.error(f"Key Error in Rank {rank}'s files. Skipping...")
+            st.error(f"Key Error in {file}. Skipping...")
 
-    ax_loss.set_xlabel("Epochs")
-    ax_loss.set_ylabel("Loss")
-    ax_loss.set_title("Training Loss")
-    ax_loss.legend()
-    st.pyplot(fig_loss)
-
-    ax_accu.set_xlabel("Epochs")
-    ax_accu.set_ylabel("Accuracy")
-    ax_accu.set_title("Evaluation Accuracy")
-    ax_accu.legend()
-    st.pyplot(fig_accu)
+    ax.set_xlabel("Epochs")
+    ax.set_ylabel("Metric Value")
+    ax.set_title("Plots for Selected Files")
+    ax.legend()
+    st.pyplot(fig)
 
 
-st.title("CSV Data Plotter for Multi-Plot")
+st.title("Enhanced CSV Data Plotter")
 
 base_dir = "exp_results/csv"
 available_dirs = get_existing_directories(base_dir)
 
 if available_dirs:
     selected_dir = st.selectbox("Select a Directory:", available_dirs)
-    ranks = st.multiselect("Select Ranks:", [2, 4, 8, 16, 32, 64, 128, 256, '2_wd0', '4_wd0', '8_wd0', '16_wd0', '32_wd0', '64_wd0', '128_wd0', '256_wd0'])
-    max_epochs = st.slider("Maximum Epochs to Display:", 100, 1000, 500)
 
-    if st.button("Generate Multi Plot"):
-        draw_multi_plot(selected_dir, ranks, max_epochs)
+    if selected_dir:
+        selected_path = os.path.join(base_dir, selected_dir)
+        files_in_dir = get_files_in_directory(selected_path)
+
+        if files_in_dir:
+            selected_files = st.multiselect("Select Files to Plot:", files_in_dir)
+            max_epochs = st.slider("Maximum Epochs to Display:", 100, 1000, 500)
+
+            if st.button("Generate Selected Plots"):
+                draw_selected_plots(selected_dir, selected_files, max_epochs)
+        else:
+            st.error(f"No CSV files found in {selected_dir}. Please check the directory.")
 else:
     st.error(f"No directories found in {base_dir}. Please ensure the data is available.")
